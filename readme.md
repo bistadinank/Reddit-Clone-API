@@ -292,12 +292,13 @@ This project demonstrates a practical implementation of a distributed system usi
 ### How to run this program
 1. Build and run the main server:
    ```bash
-   go build -o reddit
-   ./reddit
+   go build -o reddit or  go build
+   ./reddit or go run main.go
    ```
-   This will start the server on port 8080
+   This will start the server on port 8080. Now in a separate terminal run the test script
+   
 
-2. Run the test script:
+3. Run the test script:
    ```bash
    go run script/test_script.go
    ```
