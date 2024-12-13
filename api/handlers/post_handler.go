@@ -202,4 +202,37 @@ func (h *PostHandler) Delete(c *gin.Context) {
             })
         }
     }
+}
+
+// Search handles searching for posts
+func (h *PostHandler) Search(c *gin.Context) {
+    query := c.Query("q")  // Get search query from URL parameter
+    if query == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Search query is required"})
+        return
+    }
+
+    msg := &messages.SearchPosts{
+        Query: query,
+    }
+
+    response, err := h.system.Root.RequestFuture(h.enginePID, msg, 5*time.Second).Result()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Request timeout"})
+        return
+    }
+
+    if searchResponse, ok := response.(*messages.SearchPostsResponse); ok {
+        if searchResponse.Success {
+            c.JSON(http.StatusOK, gin.H{
+                "success": true,
+                "posts":   searchResponse.Posts,
+            })
+        } else {
+            c.JSON(http.StatusBadRequest, gin.H{
+                "success": false,
+                "error":   searchResponse.Error,
+            })
+        }
+    }
 } 

@@ -124,5 +124,98 @@ func (state *UserActor) Receive(context actor.Context) {
 				response.Error = "Invalid token"
 			}
 			context.Respond(response)
+
+		case *messages.GetFeed:
+			response := state.handleGetFeed(msg)
+			context.Respond(response)
 	}
+}
+
+func (state *UserActor) handleGetFeed(msg *messages.GetFeed) *messages.FeedResponse {
+	fmt.Printf("UserActor: Getting feed for user %s\n", msg.UserId)
+	userMutex.RLock()
+	defer userMutex.RUnlock()
+
+	feed := make([]*messages.SubredditFeed, 0)
+
+	// Get all subreddits the user is a member of
+	for subredditName, subreddit := range globalSubreddits {
+		fmt.Printf("UserActor: Checking membership in %s\n", subredditName)
+		if _, isMember := subreddit.Members[msg.UserId]; isMember {
+			fmt.Printf("UserActor: User is member of %s\n", subredditName)
+			subredditFeed := &messages.SubredditFeed{
+				Name:        subredditName,
+				Description: subreddit.Description,
+				Posts:       make([]*messages.PostFeed, 0),
+			}
+
+			// Get all posts for this subreddit
+			if posts, exists := subredditPosts[subredditName]; exists {
+				for _, postId := range posts {
+					if post, exists := globalPosts[postId]; exists {
+						postFeed := &messages.PostFeed{
+							PostId:        post.PostId,
+							Title:         post.Title,
+							Content:       post.Content,
+							AuthorId:      post.AuthorId,
+							SubredditName: post.SubredditName,
+							Comments:      make([]*messages.CommentFeed, 0),
+						}
+
+						// Get all comments for this post
+						if comments, exists := postComments[postId]; exists {
+							for _, commentId := range comments {
+								if comment, exists := globalComments[commentId]; exists {
+									commentFeed := buildCommentFeed(comment)
+									postFeed.Comments = append(postFeed.Comments, commentFeed)
+								}
+							}
+						}
+
+						subredditFeed.Posts = append(subredditFeed.Posts, postFeed)
+					}
+				}
+			}
+
+			feed = append(feed, subredditFeed)
+		}
+	}
+
+	return &messages.FeedResponse{
+		Success: true,
+		Feed:    feed,
+	}
+}
+
+func buildCommentFeed(comment *StoredComment) *messages.CommentFeed {
+	commentFeed := &messages.CommentFeed{
+		CommentId:  comment.CommentId,
+		Content:    comment.Content,
+		AuthorId:   comment.AuthorId,
+		Replies:    make([]*messages.CommentFeed, 0),
+		VoteCount:  calculateVotes(comment.Votes),
+	}
+
+	// Add replies recursively
+	if replies, exists := commentReplies[comment.CommentId]; exists {
+		for _, replyId := range replies {
+			if reply, exists := globalComments[replyId]; exists {
+				commentFeed.Replies = append(commentFeed.Replies, buildCommentFeed(reply))
+			}
+		}
+	}
+
+	return commentFeed
+}
+
+func calculateVotes(votes map[string]bool) int {
+	count := 0
+	for _, isUpvote := range votes {
+		if isUpvote {
+			count++
+		} else {
+			count--
+		}
+	}
+	return count
 }

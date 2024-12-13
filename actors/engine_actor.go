@@ -3,6 +3,7 @@ package actors
 import (
 	"fmt"
 	"reddit/messages"
+	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 )
@@ -238,5 +239,84 @@ func (state *EngineActor) Receive(context actor.Context) {
 		} else {
 			context.RequestWithCustomSender(msg.ActorPID, msg, context.Sender())
 		}
+
+	case *messages.DeleteComment:
+		fmt.Printf("Engine: Received DeleteComment request for comment ID: %s\n", msg.CommentId)
+		if msg.ActorPID == nil {
+			commentActor := state.commentActors[state.currentCommentActor]
+			state.currentCommentActor = (state.currentCommentActor + 1) % len(state.commentActors)
+			context.RequestWithCustomSender(commentActor, msg, context.Sender())
+		} else {
+			context.RequestWithCustomSender(msg.ActorPID, msg, context.Sender())
+		}
+
+	case *messages.DeletePost:
+		fmt.Printf("Engine: Received DeletePost request for post ID: %s\n", msg.PostId)
+		if msg.ActorPID == nil {
+			postActor := state.postActors[state.currentUserActor]
+			state.currentUserActor = (state.currentUserActor + 1) % len(state.postActors)
+			context.RequestWithCustomSender(postActor, msg, context.Sender())
+		} else {
+			context.RequestWithCustomSender(msg.ActorPID, msg, context.Sender())
+		}
+
+	case *messages.DeleteSubreddit:
+		fmt.Printf("Engine: Received DeleteSubreddit request for subreddit: %s\n", msg.Name)
+		if msg.ActorPID == nil {
+			subredditActor := state.subredditActors[state.currentUserActor]
+			state.currentUserActor = (state.currentUserActor + 1) % len(state.subredditActors)
+			context.RequestWithCustomSender(subredditActor, msg, context.Sender())
+		} else {
+			context.RequestWithCustomSender(msg.ActorPID, msg, context.Sender())
+		}
+
+	case *messages.GetFeed:
+		fmt.Printf("Engine: Received GetFeed request for user: %s\n", msg.UserId)
+		if msg.ActorPID == nil {
+			userActor := state.userActors[state.currentUserActor]
+			state.currentUserActor = (state.currentUserActor + 1) % len(state.userActors)
+			context.RequestWithCustomSender(userActor, msg, context.Sender())
+		} else {
+			context.RequestWithCustomSender(msg.ActorPID, msg, context.Sender())
+		}
+
+	case *messages.SearchPosts:
+		// Forward search request to PostActor
+		response, err := state.system.Root.RequestFuture(state.postPID, msg, 5*time.Second).Result()
+		if err != nil {
+			fmt.Printf("Error searching posts: %v\n", err)
+			context.Respond(&messages.SearchPostsResponse{
+				Success: false,
+				Error:   "Search request timeout",
+			})
+			return
+		}
+		context.Respond(response)
+
+	case *messages.EditPost:
+		// Forward edit request to PostActor
+		response, err := state.system.Root.RequestFuture(state.postPID, msg, 5*time.Second).Result()
+		if err != nil {
+			fmt.Printf("Error editing post: %v\n", err)
+			context.Respond(&messages.EditPostResponse{
+				Success: false,
+				Error:   "Edit request timeout",
+			})
+			return
+		}
+		context.Respond(response)
+
+	case *messages.EditComment:
+		// Forward edit request to CommentActor
+		response, err := state.system.Root.RequestFuture(state.commentPID, msg, 5*time.Second).Result()
+		if err != nil {
+			fmt.Printf("Error editing comment: %v\n", err)
+			context.Respond(&messages.EditCommentResponse{
+				Success: false,
+				Error:   "Edit request timeout",
+			})
+			return
+		}
+		context.Respond(response)
 	}
 }

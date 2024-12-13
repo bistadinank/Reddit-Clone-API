@@ -250,13 +250,14 @@ func (state *CommentActor) handleEdit(msg *messages.EditComment) *messages.EditC
 }
 
 func (state *CommentActor) handleDelete(msg *messages.DeleteComment) *messages.DeleteCommentResponse {
+	fmt.Printf("CommentActor: Handling delete for comment %s by user %s\n", msg.CommentId, msg.AuthorId)
+	
 	commentMutex.Lock()
 	defer commentMutex.Unlock()
 
-	fmt.Printf("Handling delete for comment %s by user %s\n", msg.CommentId, msg.AuthorId)
-
 	comment, exists := globalComments[msg.CommentId]
 	if !exists {
+		fmt.Printf("CommentActor: Comment %s not found\n", msg.CommentId)
 		return &messages.DeleteCommentResponse{
 			Success: false,
 			Error:   "Comment not found",

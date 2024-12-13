@@ -3,6 +3,7 @@ package actors
 import (
 	"fmt"
 	"reddit/messages"
+	"strings"
 	"sync"
 	"time"
 
@@ -151,6 +152,14 @@ func (state *PostActor) Receive(context actor.Context) {
 		postMutex.Unlock()
 		
 		context.Respond(response)
+
+	case *messages.SearchPosts:
+		response := state.handleSearch(msg)
+		context.Respond(response)
+
+	case *messages.EditPost:
+		response := state.handleEdit(msg)
+		context.Respond(response)
 	}
 }
 
@@ -212,4 +221,82 @@ func (state *PostActor) handleDelete(msg *messages.DeletePost) *messages.DeleteP
 	delete(globalPosts, msg.PostId)
 
 	return &messages.DeletePostResponse{Success: true}
+}
+
+func (state *PostActor) handleSearch(msg *messages.SearchPosts) *messages.SearchPostsResponse {
+	fmt.Printf("PostActor: Searching for query: %s\n", msg.Query)
+	query := strings.ToLower(msg.Query)
+	results := make([]*messages.PostFeed, 0)
+
+	postMutex.RLock()
+	defer postMutex.RUnlock()
+
+	// Search in all posts
+	for _, post := range globalPosts {
+		// Search in title and content
+		if strings.Contains(strings.ToLower(post.Title), query) || 
+		   strings.Contains(strings.ToLower(post.Content), query) {
+			
+			fmt.Printf("PostActor: Found matching post: %s\n", post.Title)
+			
+			postFeed := &messages.PostFeed{
+				PostId:        post.PostId,
+				Title:         post.Title,
+				Content:       post.Content,
+				AuthorId:      post.AuthorId,
+				
+				SubredditName: post.SubredditName,
+				Comments:      make([]*messages.CommentFeed, 0),
+			}
+
+			// Add comments
+			if comments, exists := postComments[post.PostId]; exists {
+				for _, commentId := range comments {
+					if comment, exists := globalComments[commentId]; exists {
+						commentFeed := buildCommentFeed(comment)
+						postFeed.Comments = append(postFeed.Comments, commentFeed)
+					}
+				}
+			}
+
+			results = append(results, postFeed)
+		}
+	}
+
+	fmt.Printf("PostActor: Found %d matching posts\n", len(results))
+	return &messages.SearchPostsResponse{
+		Success: true,
+		Posts:   results,
+	}
+}
+
+func (state *PostActor) handleEdit(msg *messages.EditPost) *messages.EditPostResponse {
+	postMutex.Lock()
+	defer postMutex.Unlock()
+
+	post, exists := globalPosts[msg.PostId]
+	if !exists {
+		return &messages.EditPostResponse{
+			Success: false,
+			Error:   "Post not found",
+		}
+	}
+
+	// Verify ownership
+	if post.AuthorId != msg.AuthorId {
+		return &messages.EditPostResponse{
+			Success: false,
+			Error:   "Not authorized to edit this post",
+		}
+	}
+
+	// Update content
+	if msg.Content != "" {
+		post.Content = msg.Content
+	}
+	if msg.Title != "" {
+		post.Title = msg.Title
+	}
+
+	return &messages.EditPostResponse{Success: true}
 }

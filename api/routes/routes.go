@@ -41,8 +41,10 @@ func SetupRouter(system *actor.ActorSystem, enginePID *actor.PID,
         authorized.PATCH("/user/profile", userHandler.EditProfile)
         authorized.DELETE("/comment/:commentId", commentHandler.Delete)
         authorized.DELETE("/post/:postId", postHandler.Delete)
-        
+        authorized.GET("/feed", userHandler.GetFeed)
+        authorized.GET("/search", postHandler.Search)
     }
 
     return router
 } 
+

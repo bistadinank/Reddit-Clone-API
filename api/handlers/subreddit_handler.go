@@ -71,18 +71,17 @@ func (h *SubredditHandler) Create(c *gin.Context) {
 // Join handles joining a subreddit
 func (h *SubredditHandler) Join(c *gin.Context) {
     subredditName := c.Param("name")
-    var request struct {
-        UserId string `json:"userId" binding:"required"`
-    }
-
-    if err := c.ShouldBindJSON(&request); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    
+    // Get username from token instead of request body
+    username, exists := c.Get("username")
+    if !exists {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
         return
     }
 
     msg := &messages.JoinSubreddit{
         SubredditName: subredditName,
-        UserId:        request.UserId,
+        UserId:        username.(string),  // Use username from token
     }
 
     response, err := h.system.Root.RequestFuture(h.enginePID, msg, 5*time.Second).Result()
@@ -95,7 +94,6 @@ func (h *SubredditHandler) Join(c *gin.Context) {
         if joinResponse.Success {
             c.JSON(http.StatusOK, gin.H{
                 "success": true,
-                "subId":   joinResponse.SubId,
             })
         } else {
             c.JSON(http.StatusBadRequest, gin.H{

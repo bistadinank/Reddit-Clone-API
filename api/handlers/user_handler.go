@@ -168,4 +168,37 @@ func (h *UserHandler) EditProfile(c *gin.Context) {
             })
         }
     }
+}
+
+// GetFeed handles user feed retrieval
+func (h *UserHandler) GetFeed(c *gin.Context) {
+    username, exists := c.Get("username")
+    if !exists {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+        return
+    }
+
+    msg := &messages.GetFeed{
+        UserId: username.(string),
+    }
+
+    response, err := h.system.Root.RequestFuture(h.enginePID, msg, 5*time.Second).Result()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Request timeout"})
+        return
+    }
+
+    if feedResponse, ok := response.(*messages.FeedResponse); ok {
+        if feedResponse.Success {
+            c.JSON(http.StatusOK, gin.H{
+                "success": true,
+                "feed":    feedResponse.Feed,
+            })
+        } else {
+            c.JSON(http.StatusBadRequest, gin.H{
+                "success": false,
+                "error":   feedResponse.Error,
+            })
+        }
+    }
 } 

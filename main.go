@@ -25,6 +25,9 @@ func main() {
 	// Setup router with system and enginePID
 	router := routes.SetupRouter(system, enginePID, userHandler, subredditHandler, postHandler, commentHandler)
 
-	// Run HTTP server
+	// Run the tests
+	//go runTests()
+
+	// Start the server
 	router.Run(":8080")
 }
