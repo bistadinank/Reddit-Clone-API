@@ -245,6 +245,20 @@ func (state *PostActor) handleVote(msg *messages.Vote) *messages.VoteResponse {
 - Proto.Actor framework
 - Git
 
+### How to run this program
+1. Build and run the main server:
+   ```bash
+   go build -o reddit
+   ./reddit
+   ```
+   This will start the server on port 8080
+
+2. Run the test script:
+   ```bash
+   go run script/test_script.go
+   ```
+   This will execute the test scenarios with different user personas
+
 ### Setup Instructions
 1. Clone the repository
 2. Install dependencies: `go mod tidy`
@@ -273,5 +287,25 @@ func (state *PostActor) handleVote(msg *messages.Vote) *messages.VoteResponse {
 
 ## Conclusion
 This project demonstrates a practical implementation of a distributed system using the Actor model with REST API integration. Its modular design and message-passing architecture provide a solid foundation for a scalable social platform. The implementation successfully showcases key concepts of distributed systems and concurrent programming while maintaining clean REST principles.
+
+
+### How to run this program
+1. Build and run the main server:
+   ```bash
+   go build -o reddit
+   ./reddit
+   ```
+   This will start the server on port 8080
+
+2. Run the test script:
+   ```bash
+   go run script/test_script.go
+   ```
+   This will execute the test scenarios with different user personas
+
+### Setup Instructions
+1. Clone the repository
+2. Install dependencies: `go mod tidy`
+
 
 [Demo Video Link](your_video_link)
